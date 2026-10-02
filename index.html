@@ -27,7 +27,7 @@
       --safe-b: env(safe-area-inset-bottom, 0px);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { -webkit-text-size-adjust: 100%; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
     body {
       font-family: 'DM Sans', system-ui, sans-serif;
       background: var(--bg); color: var(--ink);
@@ -243,6 +243,485 @@
     .picks-note { padding: 6px 20px 0; font-size: 12px; color: var(--muted); }
     .picks-actions { padding: 0 20px; }
 
+
+    /* ═══════════════════════════════════════════════════════════════
+       PREMIUM MOBILE REDESIGN
+       Keeps the existing functionality; improves hierarchy, touch UX,
+       card density, imagery, sticky navigation and bottom sheets.
+       ═══════════════════════════════════════════════════════════════ */
+
+    :root {
+      --bg: #fffaf5;
+      --card: #ffffff;
+      --ink: #201a15;
+      --muted: #887d72;
+      --line: #eee2d6;
+      --brand: #ff8500;
+      --brand-dark: #db6f00;
+      --brand-soft: #fff0df;
+      --green: #3c7b2d;
+      --shadow-sm: 0 3px 14px rgba(64, 35, 10, .06);
+      --shadow-md: 0 12px 30px rgba(64, 35, 10, .10);
+    }
+
+    body {
+      background:
+        radial-gradient(circle at 100% 0%, rgba(255, 166, 74, .13), transparent 28rem),
+        var(--bg);
+    }
+
+    .wrap { max-width: 1040px; padding-left: 18px; padding-right: 18px; }
+
+    /* Header */
+    .hero {
+      padding: 26px 0 18px;
+      gap: 14px;
+    }
+
+    .hero-logo {
+      width: 62px;
+      height: 62px;
+      border: 3px solid #fff;
+      box-shadow: 0 4px 16px rgba(120, 62, 0, .16);
+    }
+
+    .hero h1 {
+      font-size: clamp(27px, 7vw, 34px);
+      letter-spacing: -.035em;
+    }
+
+    .hero p {
+      margin-top: 5px;
+      font-size: 13px;
+    }
+
+    .table-pill {
+      background: var(--ink);
+      padding: 4px 10px;
+      font-size: 10.5px;
+      box-shadow: 0 3px 10px rgba(0,0,0,.12);
+    }
+
+    /* Sticky navigation */
+    .topbar {
+      background: rgba(255,250,245,.86);
+      border-top: 1px solid rgba(255,255,255,.8);
+      padding-top: 9px;
+    }
+
+    .topbar.scrolled {
+      box-shadow: 0 10px 25px -18px rgba(50, 25, 0, .45);
+    }
+
+    .search {
+      min-height: 52px;
+      border: 1px solid #eadccf;
+      border-radius: 17px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .search:focus-within {
+      border-color: rgba(255,133,0,.7);
+      box-shadow: 0 0 0 4px rgba(255,133,0,.10), var(--shadow-sm);
+    }
+
+    .search svg { left: 15px; width: 19px; height: 19px; }
+
+    .search input {
+      padding: 13px 46px 13px 43px;
+      font-size: 16px;
+    }
+
+    .search-clear {
+      right: 10px;
+      width: 32px;
+      height: 32px;
+    }
+
+    .chips {
+      gap: 9px;
+      padding: 11px 0 13px;
+      margin-left: -2px;
+      margin-right: -2px;
+    }
+
+    .chip {
+      min-height: 38px;
+      padding: 8px 16px;
+      border-color: #eadfd4;
+      box-shadow: 0 2px 8px rgba(60,30,0,.035);
+      font-size: 13px;
+    }
+
+    .chip.active {
+      box-shadow: 0 5px 12px rgba(255,133,0,.22);
+    }
+
+    /* Content */
+    #menu { padding-top: 5px; padding-bottom: 132px; }
+
+    .section {
+      padding-top: 22px;
+      scroll-margin-top: calc(var(--bar-h) + 10px);
+    }
+
+    .section-title {
+      font-size: 24px;
+      letter-spacing: -.025em;
+      margin-bottom: 13px;
+    }
+
+    .section-title small {
+      background: var(--brand-soft);
+      color: var(--brand-dark);
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 10.5px;
+      line-height: 1;
+    }
+
+    .grid {
+      gap: 13px;
+    }
+
+    /* Menu cards */
+    .item {
+      position: relative;
+      min-height: 126px;
+      gap: 13px;
+      padding: 10px;
+      border: 1px solid rgba(225, 210, 196, .82);
+      border-radius: 18px;
+      box-shadow: var(--shadow-sm);
+      background: rgba(255,255,255,.96);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .item:hover {
+      transform: translateY(-1px);
+      border-color: #f0bd84;
+      box-shadow: var(--shadow-md);
+    }
+
+    .item:active {
+      transform: scale(.985);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .item-body {
+      padding: 2px 2px 1px 0;
+    }
+
+    .item-name {
+      font-size: 15.5px;
+      letter-spacing: -.01em;
+    }
+
+    .item-desc {
+      font-size: 12.5px;
+      line-height: 1.42;
+      color: #8c8177;
+      margin-top: 5px;
+    }
+
+    .item-foot {
+      padding-top: 9px;
+    }
+
+    .price {
+      font-size: 15px;
+      letter-spacing: -.01em;
+    }
+
+    .tags { gap: 4px; }
+
+    .tag, .na {
+      font-size: 10.5px;
+      padding: 4px 8px;
+      line-height: 1.15;
+    }
+
+    .thumb {
+      width: 104px;
+      height: 104px;
+      border-radius: 15px;
+      background: linear-gradient(145deg, #fff0dd, #f8d3ab);
+      box-shadow: inset 0 0 0 1px rgba(170, 100, 30, .05);
+    }
+
+    .thumb .ph {
+      font-size: 36px;
+      color: rgba(145, 73, 0, .28);
+    }
+
+    .thumb img {
+      transition: transform .35s ease;
+    }
+
+    .item:hover .thumb img {
+      transform: scale(1.035);
+    }
+
+    .pick-dot {
+      top: 7px;
+      right: 7px;
+      width: 24px;
+      height: 24px;
+      font-size: 12px;
+    }
+
+    /* Skeleton */
+    .skel {
+      min-height: 126px;
+      border-radius: 18px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .skel .s-img {
+      width: 104px;
+      height: 104px;
+      border-radius: 15px;
+    }
+
+    /* Empty / notices */
+    .notice {
+      border-radius: 13px;
+      box-shadow: var(--shadow-sm);
+      margin-top: 13px;
+    }
+
+    .empty {
+      background: rgba(255,255,255,.7);
+      border: 1px dashed #eadccc;
+      border-radius: 18px;
+      margin-top: 18px;
+      padding: 54px 18px;
+    }
+
+    .empty .big {
+      font-size: 38px;
+    }
+
+    .empty button {
+      min-height: 44px;
+    }
+
+    .foot {
+      padding-bottom: 44px;
+    }
+
+    /* Floating picks */
+    .fab {
+      right: 16px;
+      bottom: calc(17px + var(--safe-b));
+      min-height: 52px;
+      padding: 13px 17px 13px 18px;
+      border-radius: 17px;
+      background: var(--ink);
+      box-shadow: 0 14px 34px rgba(25,15,5,.25);
+    }
+
+    .fab .count {
+      min-width: 25px;
+      text-align: center;
+      padding: 3px 7px;
+      background: var(--brand);
+    }
+
+    /* Bottom sheet */
+    .backdrop {
+      background: rgba(25, 16, 8, .58);
+      -webkit-backdrop-filter: blur(3px);
+      backdrop-filter: blur(3px);
+    }
+
+    .sheet {
+      max-width: 620px;
+      max-height: min(92vh, 860px);
+      border-radius: 26px 26px 0 0;
+      box-shadow: 0 -18px 55px rgba(45,25,5,.18);
+    }
+
+    .sheet-handle {
+      width: 44px;
+      height: 5px;
+      margin-top: 9px;
+      background: #ddd1c5;
+    }
+
+    .sheet-close {
+      width: 38px;
+      height: 38px;
+      top: 12px;
+      right: 12px;
+      font-size: 17px;
+    }
+
+    .sheet .thumb.hero-img {
+      height: min(48vh, 310px);
+      margin: 12px 14px 0;
+      border-radius: 20px;
+    }
+
+    .sheet-body {
+      padding: 17px 20px 4px;
+    }
+
+    .sheet-name {
+      font-size: clamp(27px, 7vw, 34px);
+      letter-spacing: -.035em;
+    }
+
+    .sheet-price {
+      font-size: 21px;
+      margin-top: 9px;
+    }
+
+    .sheet-desc {
+      font-size: 14px;
+      line-height: 1.65;
+      margin-top: 13px;
+    }
+
+    .btn {
+      min-height: 50px;
+      border-radius: 15px;
+      margin-top: 19px;
+      font-size: 15px;
+    }
+
+    .btn-primary {
+      box-shadow: 0 8px 18px rgba(255,133,0,.20);
+    }
+
+    .picks-title {
+      padding-top: 22px;
+      font-size: 27px;
+      letter-spacing: -.025em;
+    }
+
+    .pick-row {
+      min-height: 67px;
+      padding: 13px 20px;
+    }
+
+    .stepper {
+      gap: 9px;
+    }
+
+    .stepper button {
+      width: 38px;
+      height: 38px;
+      font-size: 19px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .stepper span {
+      min-width: 20px;
+    }
+
+    /* Mobile-specific refinements */
+    @media (max-width: 679px) {
+      .wrap { padding-left: 14px; padding-right: 14px; }
+
+      .hero {
+        padding-top: 19px;
+        padding-bottom: 13px;
+      }
+
+      .hero-logo {
+        width: 56px;
+        height: 56px;
+      }
+
+      .hero h1 { font-size: 27px; }
+
+      .topbar .wrap {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+
+      .section { padding-top: 20px; }
+
+      .section-title {
+        font-size: 22px;
+        margin-bottom: 11px;
+      }
+
+      .item {
+        min-height: 118px;
+        padding: 9px;
+        border-radius: 17px;
+      }
+
+      .thumb {
+        width: 92px;
+        height: 92px;
+        border-radius: 14px;
+      }
+
+      .item-name { font-size: 15px; }
+
+      .item-desc {
+        font-size: 12px;
+        -webkit-line-clamp: 2;
+      }
+
+      .item-foot {
+        padding-top: 7px;
+      }
+
+      .price { font-size: 14px; }
+
+      .tag, .na {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .sheet .thumb.hero-img {
+        height: min(52vh, 300px);
+        margin-left: 10px;
+        margin-right: 10px;
+      }
+
+      .sheet-body {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+
+      .picks-title,
+      .picks-sub,
+      .picks-total,
+      .picks-note {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+
+      .pick-row {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+
+      .picks-actions {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+    }
+
+    @media (min-width: 680px) {
+      .hero { padding-top: 32px; }
+      .item { min-height: 138px; }
+      .thumb { width: 116px; height: 116px; }
+      .skel .s-img { width: 116px; height: 116px; }
+    }
+
+    @media (min-width: 980px) {
+      .hero { padding-left: 2px; padding-right: 2px; }
+      .grid { gap: 15px; }
+    }
+
+
     @media (prefers-reduced-motion: reduce) {
       * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
     }
@@ -280,10 +759,10 @@
     </footer>
   </main>
 
-  <button type="button" class="fab" id="fab" aria-label="Open my picks">♥ My picks <span class="count" id="fabCount">0</span></button>
+  <button type="button" class="fab" id="fab" aria-label="Open my picks" aria-haspopup="dialog">♥ My picks <span class="count" id="fabCount">0</span></button>
 
   <div class="backdrop" id="backdrop"></div>
-  <div class="sheet" id="sheet" role="dialog" aria-modal="true">
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Menu details">
     <div class="sheet-handle"></div>
     <button type="button" class="sheet-close" data-action="close" aria-label="Close">✕</button>
     <div id="sheetBody"></div>
