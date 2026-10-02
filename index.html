@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Push N Eat — Customer Menu v1.0.1 (live CSV wired; static, GitHub Pages, reads published PUBLIC_MENU CSV) -->
+  <title>Push N Eat — Menu</title>
+  <meta name="description" content="Browse the Push N Eat menu.">
+  <meta name="theme-color" content="#FF8C00">
+  <link rel="icon" href="https://i.ibb.co/v42D0h8J/Screenshot-2026-06-05-080304-removebg-preview.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    :root {
+      --brand: #FF8C00;
+      --brand-dark: #d97300;
+      --brand-soft: #fff1e2;
+      --bg: #fff8f2;
+      --card: #ffffff;
+      --ink: #1d1a16;
+      --muted: #8a8178;
+      --line: #f0e4d6;
+      --green: #3f7a2a;
+      --bar-h: 120px;
+      --safe-b: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg); color: var(--ink);
+      min-height: 100vh; line-height: 1.4;
+      -webkit-font-smoothing: antialiased;
+    }
+    body.locked { overflow: hidden; }
+    button { font-family: inherit; color: inherit; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+
+    /* ── Hero ─────────────────────────────────────────── */
+    .hero { padding: 22px 0 14px; display: flex; align-items: center; gap: 14px; }
+    .hero-logo {
+      width: 58px; height: 58px; border-radius: 50%; object-fit: cover;
+      border: 2px solid var(--brand); background: #fff; flex-shrink: 0;
+    }
+    .hero h1 { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.1; }
+    .hero p { font-size: 13px; color: var(--muted); margin-top: 3px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .table-pill {
+      background: var(--ink); color: #fff; font-size: 11px; font-weight: 600;
+      padding: 2px 9px; border-radius: 20px; letter-spacing: 0.03em;
+    }
+
+    /* ── Sticky bar: search + chips ───────────────────── */
+    .topbar {
+      position: sticky; top: 0; z-index: 20;
+      background: rgba(255, 248, 242, 0.94);
+      -webkit-backdrop-filter: saturate(1.4) blur(10px); backdrop-filter: saturate(1.4) blur(10px);
+      padding: 10px 0 0; transition: box-shadow 0.2s;
+    }
+    .topbar.scrolled { box-shadow: 0 6px 18px -12px rgba(60, 30, 0, 0.35); }
+    .search {
+      position: relative; display: flex; align-items: center;
+      background: #fff; border: 1.5px solid var(--line); border-radius: 14px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .search:focus-within { border-color: var(--brand); box-shadow: 0 0 0 4px rgba(255, 140, 0, 0.12); }
+    .search svg { position: absolute; left: 13px; width: 18px; height: 18px; color: var(--muted); pointer-events: none; }
+    .search input {
+      width: 100%; border: none; outline: none; background: transparent;
+      font-family: inherit; font-size: 16px; /* 16px stops iOS zoom */
+      padding: 12px 42px 12px 40px; color: var(--ink);
+    }
+    .search input::placeholder { color: #b5aba0; }
+    .search input::-webkit-search-cancel-button { display: none; }
+    .search-clear {
+      position: absolute; right: 8px; width: 28px; height: 28px; border-radius: 50%;
+      border: none; background: var(--brand-soft); color: var(--brand-dark);
+      font-size: 15px; cursor: pointer; display: none; align-items: center; justify-content: center;
+    }
+    .search-clear.show { display: flex; }
+
+    .chips {
+      display: flex; gap: 8px; overflow-x: auto; padding: 10px 0 12px;
+      scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    }
+    .chips::-webkit-scrollbar { display: none; }
+    .chip {
+      flex-shrink: 0; padding: 7px 15px; border-radius: 20px;
+      border: 1.5px solid var(--line); background: #fff; color: #6f665d;
+      font-size: 13.5px; font-weight: 500; cursor: pointer; white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .chip.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+    body.searching .chips { display: none; }
+    body.searching .topbar { padding-bottom: 12px; }
+
+    /* ── Notices ──────────────────────────────────────── */
+    .notice {
+      display: none; margin: 12px 0 0; padding: 9px 12px; border-radius: 10px;
+      background: #fff4e0; color: #8a5a00; font-size: 12.5px; border: 1px solid #f6dfb4;
+    }
+    .notice.show { display: block; }
+
+    /* ── Sections + cards ─────────────────────────────── */
+    #menu { padding: 6px 0 120px; }
+    .section { padding-top: 18px; scroll-margin-top: calc(var(--bar-h) + 6px); }
+    .section-title {
+      font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600;
+      display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px;
+    }
+    .section-title small { font-family: 'DM Sans', sans-serif; font-size: 12px; color: var(--muted); font-weight: 500; }
+    .results-title { font-size: 14px; color: var(--muted); padding: 16px 0 12px; }
+    .results-title b { color: var(--ink); }
+
+    .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 680px) { .grid { grid-template-columns: 1fr 1fr; } }
+
+    .item {
+      display: flex; gap: 14px; align-items: stretch; width: 100%; text-align: left;
+      background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+      padding: 12px; cursor: pointer; transition: transform 0.12s, box-shadow 0.15s, border-color 0.15s;
+    }
+    .item:hover { border-color: #f3c999; box-shadow: 0 8px 22px -16px rgba(120, 60, 0, 0.45); }
+    .item:active { transform: scale(0.985); }
+    .item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .item-name { display: block; font-size: 15.5px; font-weight: 600; line-height: 1.3; }
+    .item-desc {
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.45;
+    }
+    .item-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 10px; flex-wrap: wrap; }
+    .price { font-size: 15px; font-weight: 700; color: var(--green); }
+    .tags { display: flex; gap: 5px; flex-wrap: wrap; }
+    .tag {
+      font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px;
+      background: var(--brand-soft); color: #9a5600; white-space: nowrap;
+    }
+    .na { font-size: 11px; font-weight: 600; color: #b84000; background: #ffe6d8; padding: 2px 8px; border-radius: 20px; }
+
+    .thumb {
+      position: relative; width: 96px; height: 96px; flex-shrink: 0;
+      border-radius: 12px; overflow: hidden; background: linear-gradient(135deg, #ffe9d1, #fbd9b3);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .thumb .ph { font-family: 'Fraunces', serif; font-size: 34px; font-weight: 700; color: rgba(160, 80, 0, 0.35); }
+    .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .pick-dot {
+      position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%;
+      background: #fff; color: #e5484d; font-size: 12px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18); z-index: 2;
+    }
+
+    .item.out { cursor: default; }
+    .item.out .thumb img { filter: grayscale(1); opacity: 0.55; }
+    .item.out .item-name, .item.out .item-desc, .item.out .price { opacity: 0.5; }
+
+    .empty { text-align: center; padding: 48px 12px; color: var(--muted); }
+    .empty .big { font-size: 34px; margin-bottom: 8px; }
+    .empty b { color: var(--ink); display: block; margin-bottom: 4px; font-size: 15px; }
+    .empty button {
+      margin-top: 14px; border: 1.5px solid var(--brand); background: #fff; color: var(--brand-dark);
+      padding: 8px 18px; border-radius: 20px; font-weight: 600; cursor: pointer;
+    }
+
+    /* ── Skeleton ─────────────────────────────────────── */
+    .skel { display: flex; gap: 14px; background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
+    .skel .s-img { width: 96px; height: 96px; border-radius: 12px; }
+    .skel .s-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
+    .skel .s-line { height: 12px; border-radius: 6px; }
+    .shimmer { background: linear-gradient(90deg, #f6ede3 25%, #fdf6ee 50%, #f6ede3 75%); background-size: 200% 100%; animation: sh 1.2s infinite linear; }
+    @keyframes sh { to { background-position: -200% 0; } }
+
+    /* ── Footer ───────────────────────────────────────── */
+    .foot { text-align: center; font-size: 12px; color: var(--muted); padding: 10px 0 40px; line-height: 1.6; }
+
+    /* ── Picks button ─────────────────────────────────── */
+    .fab {
+      position: fixed; right: 16px; bottom: calc(16px + var(--safe-b)); z-index: 30;
+      background: var(--ink); color: #fff; border: none; border-radius: 30px;
+      padding: 13px 20px; font-size: 14.5px; font-weight: 600; cursor: pointer;
+      box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.45);
+      display: none; align-items: center; gap: 8px;
+    }
+    .fab.show { display: flex; animation: pop 0.25s ease; }
+    .fab .count { background: var(--brand); border-radius: 20px; padding: 1px 8px; font-size: 12.5px; }
+    @keyframes pop { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+    /* ── Bottom sheet ─────────────────────────────────── */
+    .backdrop {
+      position: fixed; inset: 0; background: rgba(20, 12, 4, 0.5); z-index: 40;
+      opacity: 0; pointer-events: none; transition: opacity 0.25s;
+    }
+    .backdrop.open { opacity: 1; pointer-events: auto; }
+    .sheet {
+      position: fixed; left: 50%; bottom: 0; z-index: 50;
+      width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
+      background: #fff; border-radius: 22px 22px 0 0;
+      transform: translate(-50%, 105%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+      padding-bottom: calc(20px + var(--safe-b));
+      overscroll-behavior: contain;
+    }
+    .sheet.open { transform: translate(-50%, 0); }
+    .sheet-handle { width: 40px; height: 4px; border-radius: 4px; background: #e6dbcf; margin: 10px auto 0; }
+    .sheet-close {
+      position: absolute; top: 14px; right: 14px; z-index: 3;
+      width: 34px; height: 34px; border-radius: 50%; border: none;
+      background: rgba(255, 255, 255, 0.92); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .sheet .thumb.hero-img { width: auto; height: 240px; margin: 12px 16px 0; border-radius: 16px; }
+    .sheet .thumb.hero-img .ph { font-size: 72px; }
+    .sheet-body { padding: 16px 20px 0; }
+    .sheet-type { font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+    .sheet-name { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; line-height: 1.15; margin-top: 4px; }
+    .sheet-price { font-size: 20px; font-weight: 700; color: var(--green); margin-top: 8px; }
+    .sheet-desc { font-size: 14.5px; color: #5e564e; margin-top: 12px; line-height: 1.6; white-space: pre-line; }
+    .sheet .tags { margin-top: 12px; }
+    .sheet-na { margin-top: 14px; padding: 10px 12px; border-radius: 10px; background: #ffe6d8; color: #b84000; font-size: 13px; font-weight: 600; }
+    .btn {
+      width: 100%; margin-top: 18px; padding: 14px; border-radius: 14px; border: none;
+      font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+    }
+    .btn-primary { background: var(--brand); color: #fff; }
+    .btn-primary:hover { background: var(--brand-dark); }
+    .btn-ghost { background: var(--brand-soft); color: var(--brand-dark); }
+
+    .picks-title { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 700; padding: 22px 20px 4px; }
+    .picks-sub { font-size: 13px; color: var(--muted); padding: 0 20px 10px; }
+    .pick-row { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-top: 1px solid #f5ede4; }
+    .pick-row .p-name { flex: 1; min-width: 0; font-size: 14.5px; font-weight: 500; }
+    .pick-row .p-name small { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
+    .pick-row .p-name .na { display: inline-block; margin-top: 3px; }
+    .stepper { display: flex; align-items: center; gap: 8px; }
+    .stepper button {
+      width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--brand);
+      background: #fff; color: var(--brand); font-size: 16px; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .stepper span { min-width: 18px; text-align: center; font-weight: 600; }
+    .picks-total { display: flex; justify-content: space-between; padding: 14px 20px 0; border-top: 1.5px solid var(--line); font-weight: 700; font-size: 16px; }
+    .picks-total span:last-child { color: var(--brand-dark); }
+    .picks-note { padding: 6px 20px 0; font-size: 12px; color: var(--muted); }
+    .picks-actions { padding: 0 20px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="wrap">
+    <header class="hero">
+      <img class="hero-logo" src="https://i.ibb.co/v42D0h8J/Screenshot-2026-06-05-080304-removebg-preview.png" alt="Push N Eat" onerror="this.style.display='none'">
+      <div>
+        <h1>Push N Eat</h1>
+        <p><span>Our menu</span><span class="table-pill" id="tablePill" style="display:none"></span></p>
+      </div>
+    </header>
+  </div>
+
+  <div class="topbar" id="topbar">
+    <div class="wrap">
+      <label class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="search" id="search" placeholder="Search dishes, drinks…" autocomplete="off" enterkeyhint="search" aria-label="Search the menu">
+        <button type="button" class="search-clear" id="searchClear" aria-label="Clear search">✕</button>
+      </label>
+      <nav class="chips" id="chips" aria-label="Menu categories"></nav>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <div class="notice" id="notice"></div>
+    <div id="menu"></div>
+    <footer class="foot">
+      Prices are in Naira and may change.<br>
+      Please tell your waiter about any allergies.
+    </footer>
+  </main>
+
+  <button type="button" class="fab" id="fab" aria-label="Open my picks">♥ My picks <span class="count" id="fabCount">0</span></button>
+
+  <div class="backdrop" id="backdrop"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true">
+    <div class="sheet-handle"></div>
+    <button type="button" class="sheet-close" data-action="close" aria-label="Close">✕</button>
+    <div id="sheetBody"></div>
+  </div>
+
+<script>
+  // ════════════════════════════════════════════════════════════════
+  //  CONFIG — the only part you normally edit
+  // ════════════════════════════════════════════════════════════════
+  var CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQovgEaeccj6AD-befo9yFvC9OvVBFxXwNDQj0CJpJOTVtMreY7-AmHtopAmjaum1nyUALfeHOV8Nx9/pub?gid=549969439&single=true&output=csv';  // PUBLIC_MENU tab, published as CSV
+  var SHOW_UNAVAILABLE = true;     // true = greyed "Not available today" at bottom of section; false = hidden
+  var ENABLE_PICKS     = true;     // device-only "My picks" list (no ordering, no backend)
+  var REFRESH_AFTER_MS = 5 * 60 * 1000;  // re-fetch when customer returns to the tab after 5 min
+
+  // ════════════════════════════════════════════════════════════════
+  var CACHE_KEY = 'pne_menu_v1';
+  var PICKS_KEY = 'pne_picks_v1';
+  var TAG_ICONS = {
+    'spicy': '🌶️', 'hot': '🌶️', 'veg': '🥬', 'vegetarian': '🥬', 'vegan': '🌱',
+    "chef's pick": '⭐', 'chefs pick': '⭐', 'chef pick': '⭐', 'signature': '⭐',
+    'popular': '🔥', 'bestseller': '🔥', 'best seller': '🔥', 'new': '✨'
+  };
+
+  var items = [];         // normalised menu
+  var rawSig = '';        // signature of last rendered CSV (skip re-render if unchanged)
+  var query = '';
+  var picks = lsGet(PICKS_KEY) || {};   // id → qty
+  var lastFetch = 0;
+  var spyObserver = null;
+  var spyLockUntil = 0;
+  var sheetMode = null;   // 'item' | 'picks' | null
+  var sheetItemId = null;
+
+  var $ = function(id) { return document.getElementById(id); };
+
+  // ── Helpers ─────────────────────────────────────────────────────
+  function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function clean(v) { return String(v == null ? '' : v).trim(); }
+  function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+  function titleCase(s) { return s.toLowerCase().replace(/\b\w/g, function(c) { return c.toUpperCase(); }); }
+  function parsePrice(v) {   // CSV may give "₦3,500" if the column is currency-formatted
+    var n = parseFloat(String(v == null ? '' : v).replace(/[^0-9.]/g, ''));
+    return isNaN(n) ? null : n;
+  }
+  function fmt(n) { return n == null ? '' : '₦' + Number(n).toLocaleString('en-NG'); }
+  function safeUrl(u) { return /^https?:\/\//i.test(u) ? u : ''; }
+  function byId(id) { for (var i = 0; i < items.length; i++) if (items[i].id === id) return items[i]; return null; }
+  function visible(it) { return it.available || SHOW_UNAVAILABLE; }
+
+  // ── Data ────────────────────────────────────────────────────────
+  function normalize(rows) {
+    var out = [], seen = {};
+    rows.forEach(function(r, i) {
+      var name = clean(r.name);
+      if (!name) return;
+      var id = clean(r.id) || slug(name);
+      if (seen[id]) id = id + '-' + i;
+      seen[id] = true;
+      out.push({
+        id: id,
+        name: name,
+        type: titleCase(clean(r.type) || 'Other'),
+        price: parsePrice(r.price),
+        image: safeUrl(clean(r.image)),
+        desc: clean(r.description),
+        tags: clean(r.tags).split(/[,;|]/).map(function(t) { return t.trim(); }).filter(Boolean),
+        available: clean(r.available).toLowerCase() !== 'no',
+        order: i
+      });
+    });
+    return out;
+  }
+
+  function isDemo() { return CSV_URL.indexOf('PASTE_') === 0; }
+
+  function load() {
+    if (isDemo()) {
+      applyRows(DEMO_ROWS);
+      setNotice('Demo data — paste your published CSV link into CSV_URL at the top of the script.');
+      return;
+    }
+    var sep = CSV_URL.indexOf('?') > -1 ? '&' : '?';
+    fetch(CSV_URL + sep + 't=' + Date.now(), { cache: 'no-store' })
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(function(text) {
+        if (/^\s*</.test(text)) throw new Error('Got HTML, not CSV — check the publish link');
+        var parsed = Papa.parse(text, {
+          header: true, skipEmptyLines: true,
+          transformHeader: function(h) { return h.trim().toLowerCase(); }
+        });
+        if (!normalize(parsed.data).length) throw new Error('Menu is empty');
+        lastFetch = Date.now();
+        lsSet(CACHE_KEY, { rows: parsed.data, at: lastFetch });
+        setNotice('');
+        applyRows(parsed.data);
+      })
+      .catch(function(err) {
+        console.warn('Menu refresh failed:', err);
+        if (items.length) setNotice('Couldn’t refresh the menu — showing the last saved copy. Prices and availability may have changed.');
+        else showLoadError();
+      });
+  }
+
+  function applyRows(rows) {
+    var sig = JSON.stringify(rows);
+    if (sig === rawSig) return;        // nothing changed → keep scroll/DOM as is
+    rawSig = sig;
+    items = normalize(rows);
+    // drop picks for items no longer on the menu
+    Object.keys(picks).forEach(function(id) { if (!byId(id)) delete picks[id]; });
+    lsSet(PICKS_KEY, picks);
+    render();
+    updateFab();
+    if (sheetMode === 'item' && sheetItemId) renderItemSheet(sheetItemId);
+    if (sheetMode === 'picks') renderPicksSheet();
+  }
+
+  function setNotice(msg) {
+    var n = $('notice');
+    n.textContent = msg;
+    n.classList.toggle('show', !!msg);
+  }
+
+  // ── Rendering ───────────────────────────────────────────────────
+  function render() {
+    document.body.classList.toggle('searching', !!query);
+    if (query) renderSearch(); else renderSections();
+    measureBar();
+  }
+
+  function groupByType() {
+    var groups = {}, order = [];
+    items.forEach(function(it) {
+      if (!visible(it)) return;
+      if (!groups[it.type]) { groups[it.type] = []; order.push(it.type); }
+      groups[it.type].push(it);
+    });
+    order.forEach(function(t) {   // available first, then sheet order
+      groups[t].sort(function(a, b) { return (b.available - a.available) || (a.order - b.order); });
+    });
+    return { groups: groups, order: order };
+  }
+
+  function renderSections() {
+    var g = groupByType();
+    $('chips').innerHTML = g.order.map(function(t, i) {
+      return '<button type="button" class="chip' + (i === 0 ? ' active' : '') + '" data-cat="' + esc(slug(t)) + '">' + esc(t) + '</button>';
+    }).join('');
+
+    if (!g.order.length) {
+      $('menu').innerHTML = '<div class="empty"><div class="big">🍽️</div><b>The menu is being updated</b>Please check back in a few minutes.</div>';
+      return;
+    }
+
+    $('menu').innerHTML = g.order.map(function(t) {
+      var list = g.groups[t];
+      return '<section class="section" id="cat-' + esc(slug(t)) + '" data-cat="' + esc(slug(t)) + '">' +
+        '<h2 class="section-title">' + esc(t) + ' <small>' + list.length + '</small></h2>' +
+        '<div class="grid">' + list.map(cardHtml).join('') + '</div>' +
+      '</section>';
+    }).join('');
+
+    setupScrollSpy();
+  }
+
+  function renderSearch() {
+    var words = query.toLowerCase().split(/\s+/).filter(Boolean);
+    var q = query.toLowerCase();
+    var res = items.filter(function(it) { return visible(it) && matches(it, words); });
+    res.sort(function(a, b) {
+      var as = a.name.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      var bs = b.name.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      return (as - bs) || (b.available - a.available) || (a.order - b.order);
+    });
+
+    if (!res.length) {
+      $('menu').innerHTML = '<div class="empty"><div class="big">🔍</div><b>No dishes match “' + esc(query) + '”</b>Try another word, or browse the full menu.' +
+        '<br><button type="button" data-action="clear-search">Show full menu</button></div>';
+      return;
+    }
+    $('menu').innerHTML =
+      '<p class="results-title"><b>' + res.length + '</b> result' + (res.length === 1 ? '' : 's') + ' for “' + esc(query) + '”</p>' +
+      '<div class="grid">' + res.map(cardHtml).join('') + '</div>';
+  }
+
+  function thumbHtml(it, extraClass) {
+    var initial = esc(it.name.charAt(0).toUpperCase());
+    return '<span class="thumb' + (extraClass ? ' ' + extraClass : '') + '">' +
+      '<span class="ph">' + initial + '</span>' +
+      (it.image ? '<img src="' + esc(it.image) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '') +
+      (ENABLE_PICKS && picks[it.id] && !extraClass ? '<span class="pick-dot" aria-label="In your picks">♥</span>' : '') +
+    '</span>';
+  }
+
+  function tagsHtml(tags, max) {
+    var list = max ? tags.slice(0, max) : tags;
+    if (!list.length) return '';
+    return '<span class="tags">' + list.map(function(t) {
+      var icon = TAG_ICONS[t.toLowerCase()];
+      return '<span class="tag">' + (icon ? icon + ' ' : '') + esc(t) + '</span>';
+    }).join('') + '</span>';
+  }
+
+  function cardHtml(it) {
+    return '<button type="button" class="item' + (it.available ? '' : ' out') + '" data-id="' + esc(it.id) + '">' +
+      thumbHtml(it) +
+      '<span class="item-body">' +
+        '<span class="item-name">' + esc(it.name) + '</span>' +
+        (it.desc ? '<span class="item-desc">' + esc(it.desc) + '</span>' : '') +
+        '<span class="item-foot">' +
+          '<span class="price">' + fmt(it.price) + '</span>' +
+          (it.available ? tagsHtml(it.tags, 2) : '<span class="na">Not available today</span>') +
+        '</span>' +
+      '</span>' +
+    '</button>';
+  }
+
+  function renderSkeleton() {
+    var s = '';
+    for (var i = 0; i < 6; i++) {
+      s += '<div class="skel"><div class="s-img shimmer"></div><div class="s-lines">' +
+        '<div class="s-line shimmer" style="width:60%"></div>' +
+        '<div class="s-line shimmer" style="width:90%"></div>' +
+        '<div class="s-line shimmer" style="width:35%;margin-top:auto"></div></div></div>';
+    }
+    $('menu').innerHTML = '<div class="section"><div class="grid">' + s + '</div></div>';
+  }
+
+  function showLoadError() {
+    $('menu').innerHTML = '<div class="empty"><div class="big">📶</div><b>Couldn’t load the menu</b>Check your connection and try again.' +
+      '<br><button type="button" data-action="retry">Try again</button></div>';
+  }
+
+  // ── Search (instant, forgiving of 1-letter typos) ───────────────
+  function lev(a, b) {
+    var m = a.length, n = b.length, prev = [], cur, i, j;
+    for (j = 0; j <= n; j++) prev[j] = j;
+    for (i = 1; i <= m; i++) {
+      cur = [i];
+      for (j = 1; j <= n; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      }
+      prev = cur;
+    }
+    return prev[n];
+  }
+
+  function matches(it, words) {
+    var hay = (it.name + ' ' + it.desc + ' ' + it.type + ' ' + it.tags.join(' ')).toLowerCase();
+    var tokens = hay.split(/[^a-z0-9']+/).filter(Boolean);
+    return words.every(function(w) {
+      if (hay.indexOf(w) !== -1) return true;
+      if (w.length < 4) return false;
+      return tokens.some(function(t) {
+        if (Math.abs(t.length - w.length) <= 1 && lev(t, w) <= 1) return true;   // jolof → jollof
+        return t.length > w.length && lev(t.slice(0, w.length), w) <= 1;         // chik → chicken
+      });
+    });
+  }
+
+  var searchTimer = null;
+  $('search').addEventListener('input', function(e) {
+    clearTimeout(searchTimer);
+    var v = e.target.value;
+    $('searchClear').classList.toggle('show', !!v);
+    searchTimer = setTimeout(function() {
+      var wasSearching = !!query;
+      query = v.trim();
+      render();
+      if (query && !wasSearching) scrollToMenuTop();
+    }, 90);
+  });
+  $('search').addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') clearSearch();
+    if (e.key === 'Enter') e.target.blur();   // hides mobile keyboard
+  });
+  $('searchClear').addEventListener('click', function() { clearSearch(); $('search').focus(); });
+
+  function clearSearch() {
+    $('search').value = '';
+    $('searchClear').classList.remove('show');
+    if (!query) return;
+    query = '';
+    render();
+    scrollToMenuTop();
+  }
+
+  function scrollToMenuTop() {
+    var top = $('menu').getBoundingClientRect().top + window.scrollY - barHeight();
+    if (window.scrollY > top) window.scrollTo({ top: top, behavior: 'auto' });
+  }
+
+  // ── Sticky bar + scroll-spy ─────────────────────────────────────
+  function barHeight() { return $('topbar').offsetHeight; }
+  function measureBar() { document.documentElement.style.setProperty('--bar-h', barHeight() + 'px'); }
+
+  function setActiveChip(cat) {
+    var chips = $('chips');
+    var active = null;
+    Array.prototype.forEach.call(chips.children, function(c) {
+      var on = c.dataset.cat === cat;
+      c.classList.toggle('active', on);
+      if (on) active = c;
+    });
+    if (active) {
+      chips.scrollTo({ left: active.offsetLeft - chips.clientWidth / 2 + active.offsetWidth / 2, behavior: 'smooth' });
+    }
+  }
+
+  function setupScrollSpy() {
+    if (spyObserver) spyObserver.disconnect();
+    if (!('IntersectionObserver' in window)) return;
+    spyObserver = new IntersectionObserver(function(entries) {
+      if (Date.now() < spyLockUntil) return;
+      entries.forEach(function(en) {
+        if (en.isIntersecting) setActiveChip(en.target.dataset.cat);
+      });
+    }, { rootMargin: '-' + (barHeight() + 10) + 'px 0px -65% 0px' });
+    document.querySelectorAll('.section[data-cat]').forEach(function(s) { spyObserver.observe(s); });
+  }
+
+  $('chips').addEventListener('click', function(e) {
+    var chip = e.target.closest('.chip');
+    if (!chip) return;
+    var sec = $('cat-' + chip.dataset.cat);
+    if (!sec) return;
+    spyLockUntil = Date.now() + 800;
+    setActiveChip(chip.dataset.cat);
+    window.scrollTo({ top: sec.getBoundingClientRect().top + window.scrollY - barHeight() - 4, behavior: 'smooth' });
+  });
+
+  window.addEventListener('scroll', function() {
+    $('topbar').classList.toggle('scrolled', $('topbar').getBoundingClientRect().top <= 0 && window.scrollY > 40);
+  }, { passive: true });
+  window.addEventListener('resize', function() { measureBar(); if (!query) setupScrollSpy(); });
+
+  // ── Menu clicks (cards + empty-state buttons) ───────────────────
+  $('menu').addEventListener('click', function(e) {
+    var act = e.target.closest('[data-action]');
+    if (act) {
+      if (act.dataset.action === 'clear-search') clearSearch();
+      if (act.dataset.action === 'retry') { renderSkeleton(); load(); }
+      return;
+    }
+    var card = e.target.closest('.item');
+    if (card) openItem(card.dataset.id);
+  });
+
+  // ── Bottom sheet ────────────────────────────────────────────────
+  function openSheet() {
+    if (sheetMode === null) {
+      history.pushState({ pneSheet: true }, '');   // phone back button closes the sheet
+    }
+    $('backdrop').classList.add('open');
+    $('sheet').classList.add('open');
+    $('sheet').scrollTop = 0;
+    document.body.classList.add('locked');
+  }
+
+  function closeSheet(fromPop) {
+    if (sheetMode === null) return;
+    sheetMode = null; sheetItemId = null;
+    $('backdrop').classList.remove('open');
+    $('sheet').classList.remove('open');
+    document.body.classList.remove('locked');
+    if (!fromPop && history.state && history.state.pneSheet) history.back();
+  }
+
+  window.addEventListener('popstate', function() { closeSheet(true); });
+  $('backdrop').addEventListener('click', function() { closeSheet(false); });
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeSheet(false); });
+
+  function openItem(id) {
+    if (!byId(id)) return;
+    var wasClosed = sheetMode === null;
+    if (wasClosed) openSheet();
+    sheetMode = 'item'; sheetItemId = id;
+    renderItemSheet(id);
+  }
+
+  function renderItemSheet(id) {
+    var it = byId(id);
+    if (!it) { closeSheet(false); return; }
+    var picked = !!picks[id];
+    $('sheetBody').innerHTML =
+      thumbHtml(it, 'hero-img') +
+      '<div class="sheet-body">' +
+        '<div class="sheet-type">' + esc(it.type) + '</div>' +
+        '<div class="sheet-name">' + esc(it.name) + '</div>' +
+        '<div class="sheet-price">' + fmt(it.price) + '</div>' +
+        tagsHtml(it.tags) +
+        (it.desc ? '<div class="sheet-desc">' + esc(it.desc) + '</div>' : '') +
+        (it.available ? '' : '<div class="sheet-na">Not available today — please ask your waiter for alternatives.</div>') +
+        (ENABLE_PICKS && it.available
+          ? '<button type="button" class="btn ' + (picked ? 'btn-ghost' : 'btn-primary') + '" data-action="toggle-pick" data-id="' + esc(id) + '">' +
+              (picked ? '✓ In my picks — tap to remove' : '♡ Add to my picks') + '</button>'
+          : '') +
+      '</div>';
+  }
+
+  // ── My picks (device only — nothing is sent anywhere) ───────────
+  function pickCount() { return Object.keys(picks).reduce(function(s, k) { return s + picks[k]; }, 0); }
+
+  function updateFab() {
+    var n = ENABLE_PICKS ? pickCount() : 0;
+    $('fabCount').textContent = n;
+    $('fab').classList.toggle('show', n > 0);
+  }
+
+  function savePicks(rerenderCards) {
+    lsSet(PICKS_KEY, picks);
+    updateFab();
+    if (rerenderCards) {   // refresh ♥ dots without losing scroll
+      document.querySelectorAll('.item[data-id]').forEach(function(card) {
+        var it = byId(card.dataset.id);
+        if (it) card.outerHTML = cardHtml(it);
+      });
+    }
+  }
+
+  function renderPicksSheet() {
+    var ids = Object.keys(picks);
+    if (!ids.length) { closeSheet(false); return; }
+    var total = 0, hasNA = false;
+    var rows = ids.map(function(id) {
+      var it = byId(id);
+      if (!it) return '';
+      if (it.available && it.price != null) total += it.price * picks[id];
+      if (!it.available) hasNA = true;
+      return '<div class="pick-row">' +
+        '<div class="p-name">' + esc(it.name) +
+          '<small>' + fmt(it.price) + ' each</small>' +
+          (it.available ? '' : '<span class="na">Not available today</span>') +
+        '</div>' +
+        '<div class="stepper">' +
+          '<button type="button" data-action="dec" data-id="' + esc(id) + '" aria-label="Less">−</button>' +
+          '<span>' + picks[id] + '</span>' +
+          '<button type="button" data-action="inc" data-id="' + esc(id) + '" aria-label="More">+</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    $('sheetBody').innerHTML =
+      '<div class="picks-title">My picks</div>' +
+      '<div class="picks-sub">Show this screen to your waiter when you’re ready to order.</div>' +
+      rows +
+      '<div class="picks-total"><span>Estimated total</span><span>' + fmt(total) + '</span></div>' +
+      '<div class="picks-note">Your waiter confirms the final bill.' + (hasNA ? ' Unavailable items are not counted.' : '') + '</div>' +
+      '<div class="picks-actions"><button type="button" class="btn btn-ghost" data-action="clear-picks">Clear list</button></div>';
+  }
+
+  $('fab').addEventListener('click', function() {
+    if (sheetMode === null) openSheet();
+    sheetMode = 'picks';
+    renderPicksSheet();
+  });
+
+  $('sheet').addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    var a = btn.dataset.action, id = btn.dataset.id;
+    if (a === 'close') { closeSheet(false); return; }
+    if (a === 'toggle-pick') {
+      if (picks[id]) delete picks[id]; else picks[id] = 1;
+      savePicks(true);
+      renderItemSheet(id);
+    }
+    if (a === 'inc') { picks[id] = Math.min((picks[id] || 0) + 1, 20); savePicks(false); renderPicksSheet(); }
+    if (a === 'dec') {
+      picks[id] = (picks[id] || 0) - 1;
+      if (picks[id] <= 0) delete picks[id];
+      savePicks(true); renderPicksSheet();
+    }
+    if (a === 'clear-picks') { picks = {}; savePicks(true); closeSheet(false); }
+  });
+
+  // ── Table number from QR (?t=05) ────────────────────────────────
+  (function() {
+    var t = new URLSearchParams(location.search).get('t');
+    if (t && /^[A-Za-z0-9-]{1,6}$/.test(t)) {
+      $('tablePill').textContent = 'Table ' + t;
+      $('tablePill').style.display = 'inline-block';
+    }
+  })();
+
+  // ── Refresh when customer comes back to the tab ─────────────────
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible' && !isDemo() && Date.now() - lastFetch > REFRESH_AFTER_MS) load();
+  });
+
+  // ── Demo rows (used only while CSV_URL is not set) ──────────────
+  var DEMO_ROWS = [
+    { id: 'd1', name: 'Smoky Party Jollof', type: 'RICE', price: '4500', image: '', description: 'Firewood-style jollof with fried plantain and coleslaw.', tags: "Popular, Chef's pick", available: 'yes' },
+    { id: 'd2', name: 'Special Fried Rice', type: 'RICE', price: '4800', image: '', description: 'Mixed veg, liver and shrimp fried rice.', tags: '', available: 'yes' },
+    { id: 'd3', name: 'Ofada Rice & Ayamase', type: 'RICE', price: '5500', image: '', description: 'Local rice with green pepper sauce, assorted meat and egg.', tags: 'Spicy', available: 'no' },
+    { id: 'd4', name: 'Peppered Chicken', type: 'PROTEIN', price: '3000', image: '', description: 'Grilled then tossed in scotch bonnet pepper sauce.', tags: 'Spicy', available: 'yes' },
+    { id: 'd5', name: 'Asun', type: 'PROTEIN', price: '3500', image: '', description: 'Spicy roasted goat meat with onions.', tags: 'Spicy, Popular', available: 'yes' },
+    { id: 'd6', name: 'Chapman', type: 'DRINKS', price: '2500', image: '', description: 'Fanta, Sprite, grenadine and a dash of bitters.', tags: 'Popular', available: 'yes' },
+    { id: 'd7', name: 'Zobo', type: 'DRINKS', price: '1200', image: '', description: 'Chilled hibiscus with ginger and pineapple.', tags: 'Vegan', available: 'yes' },
+    { id: 'd8', name: 'Puff Puff (6 pcs)', type: 'SIDES', price: '1500', image: '', description: '', tags: 'Veg', available: 'yes' }
+  ];
+
+  // ── Boot: cached menu instantly, then fresh copy ────────────────
+  (function boot() {
+    var cached = lsGet(CACHE_KEY);
+    if (!isDemo() && cached && cached.rows && cached.rows.length) {
+      lastFetch = cached.at || 0;
+      applyRows(cached.rows);
+    } else {
+      renderSkeleton();
+    }
+    updateFab();
+    load();
+  })();
+</script>
+</body>
+</html>
