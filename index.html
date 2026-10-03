@@ -1002,6 +1002,23 @@
       .item, .item .thumb img, #fab { transition: none !important; }
     }
 
+    /* "Add to my list" button on each card — a reminder list, not a cart */
+    .item .tags { margin-top: 7px; }
+    .add-btn {
+      margin-left: auto; flex-shrink: 0;
+      min-height: 34px; padding: 0 13px; border-radius: 999px;
+      border: 1.5px solid var(--brand); background: #fff; color: var(--brand-deep);
+      font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 4px;
+      position: relative; z-index: 3;
+      -webkit-tap-highlight-color: transparent;
+      transition: background .15s, color .15s, transform .1s;
+    }
+    .add-btn:hover { background: var(--brand-soft); }
+    .add-btn:active { transform: scale(.95); }
+    .add-btn.added { background: var(--brand); border-color: var(--brand); color: #fff; }
+    .item:has(.add-btn:active) { transform: none; }
+
   </style>
 </head>
 <body>
@@ -1036,7 +1053,7 @@
     </footer>
   </main>
 
-  <button type="button" class="fab" id="fab" aria-label="Open my picks" aria-haspopup="dialog">♥ My picks <span class="count" id="fabCount">0</span></button>
+  <button type="button" class="fab" id="fab" aria-label="Open my list" aria-haspopup="dialog">♥ My list <span class="count" id="fabCount">0</span></button>
 
   <div class="backdrop" id="backdrop"></div>
   <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Menu details">
@@ -1236,7 +1253,7 @@
     return '<span class="thumb' + (extraClass ? ' ' + extraClass : '') + '">' +
       '<span class="ph">' + initial + '</span>' +
       (it.image ? '<img src="' + esc(it.image) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '') +
-      (ENABLE_PICKS && picks[it.id] && !extraClass ? '<span class="pick-dot" aria-label="In your picks">♥</span>' : '') +
+      (ENABLE_PICKS && picks[it.id] && !extraClass ? '<span class="pick-dot" aria-label="On your list">♥</span>' : '') +
     '</span>';
   }
 
@@ -1249,18 +1266,27 @@
     }).join('') + '</span>';
   }
 
+  function addBtnHtml(it) {
+    if (!ENABLE_PICKS || !it.available) return '';
+    var picked = !!picks[it.id];
+    return '<button type="button" class="add-btn' + (picked ? ' added' : '') + '" data-action="toggle-pick" data-id="' + esc(it.id) + '"' +
+      ' aria-pressed="' + picked + '" aria-label="' + (picked ? 'Remove ' : 'Add ') + esc(it.name) + (picked ? ' from' : ' to') + ' my list">' +
+      (picked ? '✓ On my list' : '+ Add to list') + '</button>';
+  }
+
   function cardHtml(it) {
-    return '<button type="button" class="item' + (it.available ? '' : ' out') + '" data-id="' + esc(it.id) + '">' +
+    return '<div class="item' + (it.available ? '' : ' out') + '" data-id="' + esc(it.id) + '" role="button" tabindex="0">' +
       thumbHtml(it) +
       '<span class="item-body">' +
         '<span class="item-name">' + esc(it.name) + '</span>' +
         (it.desc ? '<span class="item-desc">' + esc(it.desc) + '</span>' : '') +
+        (it.available ? tagsHtml(it.tags, 2) : '') +
         '<span class="item-foot">' +
           '<span class="price">' + fmt(it.price) + '</span>' +
-          (it.available ? tagsHtml(it.tags, 2) : '<span class="na">Not available today</span>') +
+          (it.available ? addBtnHtml(it) : '<span class="na">Not available today</span>') +
         '</span>' +
       '</span>' +
-    '</button>';
+    '</div>';
   }
 
   function renderSkeleton() {
@@ -1388,10 +1414,23 @@
     if (act) {
       if (act.dataset.action === 'clear-search') clearSearch();
       if (act.dataset.action === 'retry') { renderSkeleton(); load(); }
+      if (act.dataset.action === 'toggle-pick') {
+        var id = act.dataset.id;
+        if (picks[id]) delete picks[id]; else picks[id] = 1;
+        savePicks(true);
+        var again = document.querySelector('.item[data-id="' + CSS.escape(id) + '"] .add-btn');
+        if (again) again.focus({ preventScroll: true });
+      }
       return;
     }
     var card = e.target.closest('.item');
     if (card) openItem(card.dataset.id);
+  });
+  $('menu').addEventListener('keydown', function(e) {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('item')) {
+      e.preventDefault();
+      openItem(e.target.dataset.id);
+    }
   });
 
   // ── Bottom sheet ────────────────────────────────────────────────
@@ -1441,7 +1480,7 @@
         (it.available ? '' : '<div class="sheet-na">Not available today — please ask your waiter for alternatives.</div>') +
         (ENABLE_PICKS && it.available
           ? '<button type="button" class="btn ' + (picked ? 'btn-ghost' : 'btn-primary') + '" data-action="toggle-pick" data-id="' + esc(id) + '">' +
-              (picked ? '✓ In my picks — tap to remove' : '♡ Add to my picks') + '</button>'
+              (picked ? '✓ On my list — tap to remove' : '+ Add to my list') + '</button>'
           : '') +
       '</div>';
   }
@@ -1489,8 +1528,8 @@
     }).join('');
 
     $('sheetBody').innerHTML =
-      '<div class="picks-title">My picks</div>' +
-      '<div class="picks-sub">Show this screen to your waiter when you’re ready to order.</div>' +
+      '<div class="picks-title">My list</div>' +
+      '<div class="picks-sub">Just a reminder for you — nothing is ordered yet. Show this to your waiter when you’re ready.</div>' +
       rows +
       '<div class="picks-total"><span>Estimated total</span><span>' + fmt(total) + '</span></div>' +
       '<div class="picks-note">Your waiter confirms the final bill.' + (hasNA ? ' Unavailable items are not counted.' : '') + '</div>' +
